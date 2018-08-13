@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using Microsoft.AspNetCore.Http;
+using Nop.Core;
 using Nop.Core.Domain.Orders;
 using Nop.Core.Plugins;
 using Nop.Services.Payments;
@@ -9,6 +10,12 @@ namespace Nop.Plugin.Payments.SJCoin
 {
     public class SJCoinPaymentProcessor : BasePlugin, IPaymentMethod
     {
+        private readonly IWebHelper _webHelper;
+
+        public SJCoinPaymentProcessor(IWebHelper webHelper)
+        {
+            _webHelper = webHelper;
+        }
         public ProcessPaymentResult ProcessPayment(ProcessPaymentRequest processPaymentRequest)
         {
             throw new NotImplementedException();
@@ -70,6 +77,14 @@ namespace Nop.Plugin.Payments.SJCoin
         public string GetPublicViewComponentName()
         {
             return "SJCoin";
+        }
+
+        /// <summary>
+        /// Gets a configuration page URL
+        /// </summary>
+        public override string GetConfigurationPageUrl()
+        {
+            return $"{_webHelper.GetStoreLocation()}Admin/PaymentSJCoin/Configure";
         }
 
         public bool SupportCapture { get; }
