@@ -4,16 +4,19 @@ using Microsoft.AspNetCore.Http;
 using Nop.Core;
 using Nop.Core.Domain.Orders;
 using Nop.Core.Plugins;
+using Nop.Services.Localization;
 using Nop.Services.Payments;
 
 namespace Nop.Plugin.Payments.SJCoin
 {
     public class SJCoinPaymentProcessor : BasePlugin, IPaymentMethod
     {
+        private readonly ILocalizationService _localizationService;
         private readonly IWebHelper _webHelper;
 
-        public SJCoinPaymentProcessor(IWebHelper webHelper)
+        public SJCoinPaymentProcessor(ILocalizationService localizationService, IWebHelper webHelper)
         {
+            _localizationService = localizationService;
             _webHelper = webHelper;
         }
         public ProcessPaymentResult ProcessPayment(ProcessPaymentRequest processPaymentRequest)
@@ -76,7 +79,7 @@ namespace Nop.Plugin.Payments.SJCoin
 
         public string GetPublicViewComponentName()
         {
-            return "SJCoin";
+            return "PaymentSJCoin";
         }
 
         /// <summary>
@@ -87,14 +90,15 @@ namespace Nop.Plugin.Payments.SJCoin
             return $"{_webHelper.GetStoreLocation()}Admin/PaymentSJCoin/Configure";
         }
 
-        public bool SupportCapture { get; }
-        public bool SupportPartiallyRefund { get; }
-        public bool SupportRefund { get; }
-        public bool SupportVoid { get; }
-        public RecurringPaymentType RecurringPaymentType { get; }
-        public PaymentMethodType PaymentMethodType { get; }
-        public bool SkipPaymentInfo { get; }
-        public string PaymentMethodDescription { get; }
+        public bool SupportCapture => false;
+        public bool SupportPartiallyRefund => false;
+        public bool SupportRefund => false;
+        public bool SupportVoid => false;
+        public RecurringPaymentType RecurringPaymentType => RecurringPaymentType.NotSupported;
+        public PaymentMethodType PaymentMethodType => PaymentMethodType.Standard;
+        public bool SkipPaymentInfo => false;
+
+        public string PaymentMethodDescription => "Use SJ Coin to pay";
 
         public ProcessPaymentRequest GetPaymentInfo(IFormCollection form)
         {
