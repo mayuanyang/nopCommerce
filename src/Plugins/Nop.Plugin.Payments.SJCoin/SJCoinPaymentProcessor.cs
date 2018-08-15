@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using Microsoft.AspNetCore.Http;
 using Nop.Core;
 using Nop.Core.Domain.Orders;
+using Nop.Core.Domain.Payments;
 using Nop.Core.Plugins;
 using Nop.Services.Localization;
 using Nop.Services.Payments;
@@ -21,12 +22,16 @@ namespace Nop.Plugin.Payments.SJCoin
         }
         public ProcessPaymentResult ProcessPayment(ProcessPaymentRequest processPaymentRequest)
         {
-            throw new NotImplementedException();
+            return new ProcessPaymentResult
+            {
+                AllowStoringCreditCardNumber = true,
+                NewPaymentStatus = PaymentStatus.Pending
+            };
         }
 
         public void PostProcessPayment(PostProcessPaymentRequest postProcessPaymentRequest)
         {
-            throw new NotImplementedException();
+            
         }
 
         public bool HidePaymentMethod(IList<ShoppingCartItem> cart)
