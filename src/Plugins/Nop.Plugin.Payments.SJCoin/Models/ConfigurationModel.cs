@@ -7,8 +7,19 @@ namespace Nop.Plugin.Payments.SJCoin.Models
     {
         public int ActiveStoreScopeConfiguration { get; set; }
 
-        [NopResourceDisplayName("Plugins.Payment.SJCoin.RecipientWalletAddress")]
-        public string RecipientWalletAddress { get; set; }
+        [NopResourceDisplayName("Plugins.Payment.SJCoin.ContractAddress")]
+        public string ContractAddress { get; set; }
 
+        [NopResourceDisplayName("Plugins.Payment.SJCoin.Url")]
+        public string Url { get; set; }
+
+        [NopResourceDisplayName("Plugins.Payment.SJCoin.AccountPrivateKey")]
+        public string AccountPrivateKey { get; set; }
+
+        [NopResourceDisplayName("Plugins.Payment.SJCoin.TransactionReceiptCheckIntervalInSeconds")]
+        public int TransactionReceiptCheckIntervalInSeconds { get; set; }
+
+        [NopResourceDisplayName("Plugins.Payment.SJCoin.TransactionDetailsBaseUrl")]
+        public string TransactionDetailsBaseUrl { get; set; }
     }
 }

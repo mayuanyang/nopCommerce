@@ -1,5 +1,16 @@
 ﻿@{
     Layout = "";
 }
+
 @model Nop.Plugin.Payments.SJCoin.Models.PaymentInfoModel
-<label asp-for="RecipientWalletAddress">@T("Payment.RecipientWalletAddress"):@Model.RecipientWalletAddress</label>
+
+<div class="form-group">
+    <div class="col-md-3">
+        <label asp-for="BuyerWalletAddress">@T("Payment.BuyerWalletAddress"):</label>
+    </div>
+
+    <div class="col-md-9">
+        <input type="text" asp-for="BuyerWalletAddress" autocomplete="off" />
+        <span asp-validation-for="BuyerWalletAddress"></span>
+    </div>
+</div>

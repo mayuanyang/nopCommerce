@@ -5,12 +5,12 @@ namespace Nop.Plugin.Payments.SJCoin.Models
 {
     public class PaymentInfoModel : BaseNopModel
     {
-        [NopResourceDisplayName("Payment.RecipientWalletAddress")]
-        public string RecipientWalletAddress { get; }
+        [NopResourceDisplayName("Payment.BuyerWalletAddress")]
+        public string BuyerWalletAddress { get; }
 
-        public PaymentInfoModel(string recipientWalletAddress)
+        public PaymentInfoModel(string buyerWalletAddress)
         {
-            RecipientWalletAddress = recipientWalletAddress;
+            BuyerWalletAddress = buyerWalletAddress;
         }
     }
 }

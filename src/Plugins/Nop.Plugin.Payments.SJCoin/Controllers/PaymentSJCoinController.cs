@@ -53,7 +53,11 @@ namespace Nop.Plugin.Payments.SJCoin.Controllers
             var model = new ConfigurationModel
             {
                 ActiveStoreScopeConfiguration = storeScope,
-                RecipientWalletAddress = sjCoinPaymentSettings.RecipientWalletAddress
+                ContractAddress = sjCoinPaymentSettings.ContractAddress,
+                Url = sjCoinPaymentSettings.Url,
+                AccountPrivateKey = sjCoinPaymentSettings.AccountPrivateKey,
+                TransactionReceiptCheckIntervalInSeconds = sjCoinPaymentSettings.TransactionReceiptCheckIntervalInSeconds,
+                TransactionDetailsBaseUrl = sjCoinPaymentSettings.TransactionDetailsBaseUrl
             };
 
             return View("~/Plugins/Payments.SJCoin/Views/Configure.cshtml", model);
@@ -72,9 +76,17 @@ namespace Nop.Plugin.Payments.SJCoin.Controllers
             var storeScope = _storeContext.ActiveStoreScopeConfiguration;
             var sjCoinPaymentSettings = _settingService.LoadSetting<SJCoinPaymentSettings>(storeScope);
 
-            sjCoinPaymentSettings.RecipientWalletAddress = model.RecipientWalletAddress;
+            sjCoinPaymentSettings.ContractAddress = model.ContractAddress;
+            sjCoinPaymentSettings.Url = model.Url;
+            sjCoinPaymentSettings.AccountPrivateKey = model.AccountPrivateKey;
+            sjCoinPaymentSettings.TransactionReceiptCheckIntervalInSeconds = model.TransactionReceiptCheckIntervalInSeconds;
+            sjCoinPaymentSettings.TransactionDetailsBaseUrl = model.TransactionDetailsBaseUrl;
 
-            _settingService.SaveSettingOverridablePerStore(sjCoinPaymentSettings, x => x.RecipientWalletAddress, true, storeScope, false);
+            _settingService.SaveSettingOverridablePerStore(sjCoinPaymentSettings, x => x.ContractAddress, true, storeScope, false);
+            _settingService.SaveSettingOverridablePerStore(sjCoinPaymentSettings, x => x.Url, true, storeScope, false);
+            _settingService.SaveSettingOverridablePerStore(sjCoinPaymentSettings, x => x.AccountPrivateKey, true, storeScope, false);
+            _settingService.SaveSettingOverridablePerStore(sjCoinPaymentSettings, x => x.TransactionReceiptCheckIntervalInSeconds, true, storeScope, false);
+            _settingService.SaveSettingOverridablePerStore(sjCoinPaymentSettings, x => x.TransactionDetailsBaseUrl, true, storeScope, false);
 
             //now clear settings cache
             _settingService.ClearCache();

@@ -804,9 +804,27 @@
                             @foreach (var item in Model.CustomValues)
                             {
                                 <ul class="common-list">
-                                    <li>
-                                        @item.Key: @(item.Value != null ? item.Value.ToString() : "")
-                                    </li>
+                                    @if (item.Value != null)
+                                    {
+                                        if(item.Value.ToString().ToLower().StartsWith("http"))
+                                        {
+                                            <li>
+                                                @item.Key: <a href=item.Value.ToString()> Details </a>
+                                            </li>
+                                        }
+                                        else
+                                        {
+                                            <li>
+                                                @item.Key: @item.Value.ToString()
+                                            </li>
+                                        }
+                                    }
+                                    else
+                                    {
+                                        <li>
+                                            @item.Key: ""
+                                        </li>
+                                    }
                                 </ul>
                             }
                         </div>
