@@ -48,9 +48,12 @@ namespace Nop.Plugin.Payments.SJCoin
             var web3 = new Web3(account, _sjCoinPaymentSettings.Url);
             var handler = web3.Eth.GetContractHandler(_sjCoinPaymentSettings.ContractAddress);
 
-            var transaction = ProcessTransactionInBlockchain(web3, handler, processPaymentRequest).WaitAndUnwrapException();
+            var transactionHash = HandleWithRetry(async () => await ProcessTransactionInBlockchain(web3, handler, processPaymentRequest)).WaitAndUnwrapException();
 
-            var transactionReceipt = WaitForBlockchainToProcessTransaction(web3, transaction).WaitAndUnwrapException();
+            var transaction = HandleWithRetry(async () =>
+                await web3.Eth.Transactions.GetTransactionByHash.SendRequestAsync(transactionHash).ConfigureAwait(false)).WaitAndUnwrapException();
+
+            var transactionReceipt = HandleWithRetry(async () => await web3.Eth.Transactions.GetTransactionReceipt.SendRequestAsync(transaction.TransactionHash)).WaitAndUnwrapException(); 
 
             var getPaidAmountFunction = new GetPaidAmountFunction()
             {
@@ -61,15 +64,20 @@ namespace Nop.Plugin.Payments.SJCoin
             
             var paidAmount = Web3.Convert.FromWeiToBigDecimal(paidAmountBigInteger);
 
-            processPaymentRequest.CustomValues["Paid"] = paidAmount;
-
             if (transactionReceipt != null)
+            {
                 processPaymentRequest.CustomValues.Add("Payment.TransactionReceipt", Path.Combine(_sjCoinPaymentSettings.TransactionDetailsBaseUrl, transactionReceipt.TransactionHash));
-            
+
+                return new ProcessPaymentResult
+                {
+                    AllowStoringCreditCardNumber = true,
+                    NewPaymentStatus = paidAmount >= processPaymentRequest.OrderTotal ? PaymentStatus.Paid : PaymentStatus.Pending
+                };
+            }
             return new ProcessPaymentResult
             {
                 AllowStoringCreditCardNumber = true,
-                NewPaymentStatus = paidAmount >= processPaymentRequest.OrderTotal ? PaymentStatus.Paid : PaymentStatus.Pending
+                NewPaymentStatus = PaymentStatus.Pending
             };
         }
 
@@ -87,7 +95,24 @@ namespace Nop.Plugin.Payments.SJCoin
             return await handler.QueryAsync<BalanceOfFunction, BigInteger>(balanceOfFunction);
         }
 
-        private async Task<Transaction> ProcessTransactionInBlockchain(Web3 web3, ContractHandler handler, ProcessPaymentRequest processPaymentRequest)
+        private async Task<T> HandleWithRetry<T>(Func<Task<T>> func) where T : class 
+        {
+            int loop = 0;
+            while (loop < 20)
+            {
+                var result = await func();
+                if (result != null)
+                {
+                    return result;
+                }
+                await Task.Delay(_sjCoinPaymentSettings.TransactionReceiptCheckIntervalInSeconds == 0 ? 5 : _sjCoinPaymentSettings.TransactionReceiptCheckIntervalInSeconds * 1000);
+                loop++;
+            }
+
+            return null;
+        }
+
+        private async Task<string> ProcessTransactionInBlockchain(Web3 web3, ContractHandler handler, ProcessPaymentRequest processPaymentRequest)
         {
             var withdrawFrom = processPaymentRequest.CustomValues["Payment.BuyerWalletAddress"].ToString();
             var withdrawMessage = new WithdrawFunction()
@@ -97,9 +122,7 @@ namespace Nop.Plugin.Payments.SJCoin
                 CorrelationId = processPaymentRequest.OrderGuid.ToString("N")
             };
 
-            var transactionHash = await handler.SendRequestAsync(withdrawMessage);
-
-            return await web3.Eth.Transactions.GetTransactionByHash.SendRequestAsync(transactionHash);
+            return await handler.SendRequestAsync(withdrawMessage);
         }
 
         private async Task<TransactionReceipt> WaitForBlockchainToProcessTransaction(Web3 web3, Transaction transaction)
