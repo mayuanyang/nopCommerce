@@ -14,6 +14,7 @@ using Nop.Services.Payments;
 using System.Numerics;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Primitives;
+using Nethereum.Contracts.CQS;
 using Nethereum.Hex.HexTypes;
 using Nethereum.RPC.Eth.DTOs;
 using Nethereum.Web3.Accounts;
@@ -45,36 +46,55 @@ namespace Nop.Plugin.Payments.SJCoin
         {
             var account = new Account(_sjCoinPaymentSettings.AccountPrivateKey);
             var web3 = new Web3(account, _sjCoinPaymentSettings.Url);
+            var handler = web3.Eth.GetContractHandler(_sjCoinPaymentSettings.ContractAddress);
 
-            var transaction = ProcessTransactionInBlockchain(web3, processPaymentRequest).WaitAndUnwrapException();
+            var transaction = ProcessTransactionInBlockchain(web3, handler, processPaymentRequest).WaitAndUnwrapException();
 
             var transactionReceipt = WaitForBlockchainToProcessTransaction(web3, transaction).WaitAndUnwrapException();
+
+            var getPaidAmountFunction = new GetPaidAmountFunction()
+            {
+                CorrelationId = processPaymentRequest.OrderGuid.ToString("N"),
+            };
+
+            var paidAmountBigInteger = handler.QueryAsync<GetPaidAmountFunction, BigInteger>(getPaidAmountFunction).WaitAndUnwrapException();
             
+            var paidAmount = Web3.Convert.FromWeiToBigDecimal(paidAmountBigInteger);
+
+            processPaymentRequest.CustomValues["Paid"] = paidAmount;
+
             if (transactionReceipt != null)
-                processPaymentRequest.CustomValues.Add(_localizationService.GetResource("Payment.TransactionReceipt"), Path.Combine(_sjCoinPaymentSettings.TransactionDetailsBaseUrl, transactionReceipt.TransactionHash));
+                processPaymentRequest.CustomValues.Add("Payment.TransactionReceipt", Path.Combine(_sjCoinPaymentSettings.TransactionDetailsBaseUrl, transactionReceipt.TransactionHash));
             
             return new ProcessPaymentResult
             {
                 AllowStoringCreditCardNumber = true,
-                NewPaymentStatus = transactionReceipt == null ? PaymentStatus.Pending : PaymentStatus.Paid
+                NewPaymentStatus = paidAmount >= processPaymentRequest.OrderTotal ? PaymentStatus.Paid : PaymentStatus.Pending
             };
         }
 
-        private string GetAnchor(string path)
+        private async Task<BigInteger> GetAccountBalance(string walletAddress, string accountPrivateKey)
         {
-            return $"<a href='{path}'>Details</a>";
+            var account = new Account(accountPrivateKey);
+            var web3 = new Web3(account, _sjCoinPaymentSettings.Url);
+
+            var handler = web3.Eth.GetContractHandler(_sjCoinPaymentSettings.ContractAddress);
+            var balanceOfFunction = new BalanceOfFunction()
+            {
+                Owner = walletAddress
+            };
+
+            return await handler.QueryAsync<BalanceOfFunction, BigInteger>(balanceOfFunction);
         }
 
-        private async Task<Transaction> ProcessTransactionInBlockchain(Web3 web3, ProcessPaymentRequest processPaymentRequest)
+        private async Task<Transaction> ProcessTransactionInBlockchain(Web3 web3, ContractHandler handler, ProcessPaymentRequest processPaymentRequest)
         {
-            
-            var withdrawFrom = processPaymentRequest.CustomValues[_localizationService.GetResource("Payment.BuyerWalletAddress")].ToString();
-            var handler = web3.Eth.GetContractHandler(_sjCoinPaymentSettings.ContractAddress);
+            var withdrawFrom = processPaymentRequest.CustomValues["Payment.BuyerWalletAddress"].ToString();
             var withdrawMessage = new WithdrawFunction()
             {
                 From = withdrawFrom,
                 Amount = new HexBigInteger(Web3.Convert.ToWei(processPaymentRequest.OrderTotal)),
-                CorrelationId = processPaymentRequest.OrderGuid.ToString()
+                CorrelationId = processPaymentRequest.OrderGuid.ToString("N")
             };
 
             var transactionHash = await handler.SendRequestAsync(withdrawMessage);
@@ -187,6 +207,19 @@ namespace Nop.Plugin.Payments.SJCoin
 
         public IList<string> ValidatePaymentForm(IFormCollection form)
         {
+            //pass custom values to payment processor
+            if (form.TryGetValue("BuyerWalletAddress", out StringValues buyerWalletAddress)
+                && !StringValues.IsNullOrEmpty(buyerWalletAddress)
+                && form.TryGetValue("BuyerWalletPrivateKey", out StringValues buyerWalletPrivateKey)
+                && !StringValues.IsNullOrEmpty(buyerWalletPrivateKey))
+            {
+                var value = Web3.Convert.FromWeiToBigDecimal(GetAccountBalance(buyerWalletAddress, buyerWalletPrivateKey).WaitAndUnwrapException());
+                
+                if (decimal.Parse(value.ToString()) <= 0)
+                {
+                    return new List<string>(){"You don't have enough credit to pay this order"};
+                }
+            }
             return new List<string>();
         }
 

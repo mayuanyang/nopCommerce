@@ -809,7 +809,7 @@
                                         if(item.Value.ToString().ToLower().StartsWith("http"))
                                         {
                                             <li>
-                                                @item.Key: <a href=item.Value.ToString()> Details </a>
+                                                @item.Key: <a href=@item.Value.ToString()> Details </a>
                                             </li>
                                         }
                                         else
